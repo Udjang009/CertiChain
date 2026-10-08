@@ -37,15 +37,15 @@ function NewCert() {
 
   function validate() {
     const e: Record<string, string> = {};
-    if (form.recipientName.trim().length < 3) e.recipientName = "Minimal 3 karakter";
-    if (!/^\d{5,12}$/.test(form.nim)) e.nim = "NIM dummy 5–12 digit angka";
-    if (form.activity.trim().length < 3) e.activity = "Wajib diisi";
-    if (!form.activityDate) e.activityDate = "Wajib diisi";
-    if (!form.issueDate) e.issueDate = "Wajib diisi";
-    else if (form.activityDate && form.issueDate < form.activityDate) e.issueDate = "Tidak boleh sebelum tanggal kegiatan";
-    if (!/^CC-\d{4}-\d{4}$/.test(code)) e.code = "Format CC-YYYY-NNNN";
-    else if (certs.some((c) => c.code === code)) e.code = "Kode sudah digunakan";
-    if (file && (file.type !== "application/pdf" || file.size > 5e6)) e.file = "PDF maks. 5 MB";
+    if (form.recipientName.trim().length < 3) e["recipientName"] = "Minimal 3 karakter";
+    if (!/^\d{5,12}$/.test(form.nim)) e["nim"] = "NIM dummy 5–12 digit angka";
+    if (form.activity.trim().length < 3) e["activity"] = "Wajib diisi";
+    if (!form.activityDate) e["activityDate"] = "Wajib diisi";
+    if (!form.issueDate) e["issueDate"] = "Wajib diisi";
+    else if (form.activityDate && form.issueDate < form.activityDate) e["issueDate"] = "Tidak boleh sebelum tanggal kegiatan";
+    if (!/^CC-\d{4}-\d{4}$/.test(code)) e["code"] = "Format CC-YYYY-NNNN";
+    else if (certs.some((c) => c.code === code)) e["code"] = "Kode sudah digunakan";
+    if (file && (file.type !== "application/pdf" || file.size > 5e6)) e["file"] = "PDF maks. 5 MB";
     setErrors(e);
     return Object.keys(e).length === 0;
   }

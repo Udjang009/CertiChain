@@ -11,7 +11,7 @@ export interface Certificate {
   activity: string;
   activityDate: string;
   issueDate: string;
-  fileName?: string;
+  fileName?: string | undefined;
   issuer: string;
   // simulated on-chain (Solana Devnet)
   status: CertStatus;
