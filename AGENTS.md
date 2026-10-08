@@ -8,3 +8,5 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Certificate data and simulated blockchain proofs live in src/lib/certs.ts (localStorage store) so a real backend/Solana integration can replace one module.
