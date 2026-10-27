@@ -30,7 +30,7 @@ function ActivityPage() {
   const [busy, setBusy] = useState(false);
 
   const refresh = useCallback(async () => {
-    if (!wallet) return setBalance(null);
+    if (!wallet) { setBalance(null); return; }
     try { setBalance(await getBalance(wallet)); } catch { toast.error("Gagal membaca saldo Devnet"); }
   }, [wallet]);
   useEffect(() => { void refresh(); }, [refresh]);
