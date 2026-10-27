@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { SiteNav } from "@/components/certichain/SiteNav";
 import { CopyHash } from "@/components/certichain/common";
 import { certPayload, certStore, formatDate, sha256, type Certificate } from "@/lib/certs";
+import { explorerTx, issueMemo, verifyOnChain } from "@/lib/solana";
 
 export const Route = createFileRoute("/verify")({
   head: () => ({
@@ -59,10 +60,10 @@ function VerifyPage() {
             </Button>
           </form>
           {err && <p className="mt-2 text-sm text-destructive">{err}</p>}
-          <p className="mt-2 text-xs text-muted-foreground">Coba: CC-2026-0001 (valid), CC-2026-0005 (tidak valid), CC-2026-9999 (tidak ada)</p>
+          <p className="mt-2 text-xs text-muted-foreground">Status diperiksa langsung ke Solana Devnet. Data sertifikat contoh belum dicatat — terbitkan sertifikat dulu dari dashboard admin.</p>
 
           <div className="mt-10">
-            {loading && <div className="card-surface flex items-center gap-3 p-6 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Mencocokkan hash dengan catatan Solana Devnet…</div>}
+            {loading && <div className="card-surface flex items-center gap-3 p-6 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Membaca transaksi dari Solana Devnet…</div>}
             {result?.ok && (
               <div className="card-surface overflow-hidden">
                 <div className="flex items-center gap-3 bg-success/15 p-5 text-success">
@@ -73,10 +74,11 @@ function VerifyPage() {
                   <Field k="Nama kegiatan" v={result.cert.activity} />
                   <Field k="Tanggal penerbitan" v={formatDate(result.cert.issueDate)} />
                   <Field k="Penerbit" v={result.cert.issuer} />
-                  <Field k="Timestamp blockchain" v={result.cert.timestamp} mono />
+                  <Field k="Waktu blok (Devnet)" v={result.blockTime ?? result.cert.timestamp} mono />
                   <CopyHash label="Wallet penerbit" value={result.cert.wallet} />
                   <div className="sm:col-span-2"><CopyHash label="Hash sertifikat" value={result.cert.hash} /></div>
-                  <div className="sm:col-span-2"><CopyHash label="Transaction ID" value={result.cert.txId} /></div>
+                  <div className="sm:col-span-2"><CopyHash label="Transaction signature" value={result.cert.txId} /></div>
+                  <div className="sm:col-span-2 text-xs text-muted-foreground"><a href={explorerTx(result.cert.txId)} target="_blank" rel="noreferrer" className="font-medium text-foreground underline">Periksa transaksi di Solana Explorer</a> · Memo adalah bukti pencatatan transaksi oleh wallet penerbit, bukan smart contract yang memvalidasi penerbit.</div>
                 </div>
               </div>
             )}
@@ -85,7 +87,7 @@ function VerifyPage() {
                 <div className="flex items-center gap-3 bg-destructive/10 p-5 text-destructive">
                   <ShieldX className="h-7 w-7" /><span className="font-display text-xl font-bold tracking-wide">CERTIFICATE NOT VERIFIED</span>
                 </div>
-                <p className="p-6 text-sm text-muted-foreground">Sertifikat <code className="font-mono">{result.code}</code> tidak ditemukan, belum dicatat, atau bukti integritasnya tidak sesuai.</p>
+                <p className="p-6 text-sm text-muted-foreground">Sertifikat <code className="font-mono">{result.code}</code> tidak terverifikasi: {result.reason}{result.cert?.txId && <> <a href={explorerTx(result.cert.txId)} target="_blank" rel="noreferrer" className="underline">Lihat di Explorer</a></>}</p>
               </div>
             )}
           </div>
