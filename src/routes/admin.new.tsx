@@ -34,6 +34,7 @@ function NewCert() {
   const [step, setStep] = useState(-1);
   const [done, setDone] = useState<Certificate | null>(null);
   const code = form.code || nextCode(certs);
+  const busy = step >= 0 && step < 7;
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [k]: e.target.value });
 
   function validate() {
@@ -96,7 +97,7 @@ function NewCert() {
           </div>
         </form>
         <div className="card-surface p-6">
-          <h2 className="font-semibold">Simulasi pencatatan · Solana Devnet</h2>
+          <h2 className="font-semibold">Pencatatan nyata · Solana Devnet (Memo Program)</h2>
           <ol className="mt-4 space-y-3">
             {STEPS.map((s, i) => {
               const state = step > i ? "done" : step === i ? "active" : "idle";
@@ -115,7 +116,7 @@ function NewCert() {
               <CopyHash label="Hash" value={done.hash} />
               <CopyHash label="Transaction ID" value={done.txId} />
               <CopyHash label="Timestamp" value={done.timestamp} />
-              <Button variant="outline" size="sm" asChild><Link to="/admin/certificates">Lihat di daftar</Link></Button>
+              <div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" asChild><a href={explorerTx(done.txId)} target="_blank" rel="noreferrer">Lihat di Solana Explorer</a></Button><Button variant="outline" size="sm" asChild><Link to="/admin/certificates">Lihat di daftar</Link></Button></div>
             </div>
           )}
         </div>
