@@ -36,7 +36,7 @@ function ActivityPage() {
   useEffect(() => { void refresh(); }, [refresh]);
 
   async function testActivity() {
-    if (!wallet) return toast.error("Hubungkan Phantom terlebih dahulu");
+    if (!wallet) { toast.error("Hubungkan Phantom terlebih dahulu"); return; }
     setBusy(true);
     try {
       const r = await sendMemo(wallet, `CertiChain: aktivitas uji ${new Date().toISOString()}`);
