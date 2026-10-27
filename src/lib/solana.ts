@@ -23,11 +23,16 @@ export function getPhantom(): PhantomProvider | null {
   return p?.isPhantom ? p : null;
 }
 
+// Loaded from a CDN in the browser only, so the library never enters the server (workerd) bundle.
+type Web3 = typeof import("@solana/web3.js");
+const WEB3_URL = "https://esm.sh/@solana/web3.js@1.98.0?bundle";
+const BUFFER_URL = "https://esm.sh/buffer@6.0.3";
 async function web3() {
-  const { Buffer } = await import("buffer");
+  const { Buffer } = (await import(/* @vite-ignore */ BUFFER_URL)) as typeof import("buffer");
   const g = globalThis as unknown as { Buffer?: unknown };
   if (!g.Buffer) g.Buffer = Buffer;
-  return { ...(await import("@solana/web3.js")), Buffer };
+  const mod = (await import(/* @vite-ignore */ WEB3_URL)) as Web3;
+  return { ...mod, Buffer };
 }
 
 export async function getBalance(address: string) {
