@@ -71,18 +71,18 @@ function pseudoB58(seed: string, len: number) {
   return s;
 }
 
+// Seed certificates carry NO fake blockchain proof: they start "pending" (or "invalid")
+// and only become "valid" after a real, confirmed Devnet transaction.
 const SEED: Certificate[] = seedRaw.map(([code, name, nim, activity, date, status]) => ({
   code, recipientName: name, nim, activity, activityDate: date, issueDate: date,
-  issuer: ISSUER, status,
-  hash: status === "pending" ? "" : pseudoHex(code),
-  txId: status === "pending" ? "" : pseudoB58(code + "tx", 88),
-  wallet: ISSUER_WALLET,
-  timestamp: status === "pending" ? "" : `${date}T09:30:00.000Z`,
+  issuer: ISSUER, status: status === "invalid" ? "invalid" : "pending",
+  hash: "", txId: "", wallet: "", timestamp: "",
   fileName: `${code}.pdf`,
 }));
+void pseudoB58;
 
 // ---- tiny store (localStorage-backed; swap for API/backend later) ----
-const KEY = "certichain.certs.v1";
+const KEY = "certichain.certs.v2";
 let state: Certificate[] = SEED;
 let hydrated = false;
 const listeners = new Set<() => void>();

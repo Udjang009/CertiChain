@@ -1,4 +1,6 @@
 import { QRCodeSVG } from "qrcode.react";
+import { ExternalLink } from "lucide-react";
+import { explorerTx } from "@/lib/solana";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { formatDate, type Certificate } from "@/lib/certs";
 import { CopyHash, StatusBadge } from "./common";
@@ -29,11 +31,14 @@ export function CertDetailDialog({ cert, onOpenChange, showPrivate = true }: { c
                   </dl>
                 </section>
                 <section className="space-y-3 rounded-lg border border-chain/40 bg-accent/40 p-4">
-                  <div className="text-xs font-semibold uppercase tracking-wider text-accent-foreground">On-Chain · Solana Devnet (simulasi)</div>
+                  <div className="text-xs font-semibold uppercase tracking-wider text-accent-foreground">On-Chain · Solana Devnet</div>
                   <CopyHash label="Hash SHA-256" value={cert.hash} />
-                  <CopyHash label="Transaction ID" value={cert.txId} />
+                  <CopyHash label="Transaction signature" value={cert.txId} />
                   <CopyHash label="Wallet penerbit" value={cert.wallet} />
                   <CopyHash label="Timestamp" value={cert.timestamp} />
+                  {cert.txId ? (
+                    <a href={explorerTx(cert.txId)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-medium text-accent-foreground hover:underline">Lihat di Solana Explorer <ExternalLink className="h-3 w-3" /></a>
+                  ) : <p className="text-xs text-muted-foreground">Belum dicatat ke blockchain.</p>}
                 </section>
               </div>
               <div className="flex flex-col items-center gap-2">

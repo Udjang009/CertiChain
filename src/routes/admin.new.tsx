@@ -9,7 +9,7 @@ import { DashboardShell } from "@/components/certichain/DashboardShell";
 import { CopyHash } from "@/components/certichain/common";
 import { adminNav } from "@/components/certichain/nav";
 import { certPayload, certStore, ISSUER, nextCode, sha256, useCertificates, useWallet, type Certificate } from "@/lib/certs";
-import { activityStore, sendMemo } from "@/lib/solana";
+import { explorerTx, issueCertificateOnChain } from "@/lib/solana";
 
 export const Route = createFileRoute("/admin/new")({
   head: () => ({
@@ -23,7 +23,7 @@ export const Route = createFileRoute("/admin/new")({
   component: NewCert,
 });
 
-const STEPS = ["Data sertifikat dibuat", "Menghasilkan hash SHA-256", "Hash dicatat sebagai bukti blockchain", "Menghasilkan timestamp", "Menetapkan wallet penerbit", "Menghasilkan transaction ID", "Status sertifikat: Valid"];
+const STEPS = ["Validasi data & ID sertifikat", "Menghasilkan hash SHA-256", "Menunggu persetujuan Phantom & konfirmasi Devnet", "Transaksi Memo terkonfirmasi", "Mengambil signature & waktu blok", "Mencatat riwayat aktivitas", "Status sertifikat: Valid"];
 
 function NewCert() {
   const certs = useCertificates();
@@ -34,6 +34,7 @@ function NewCert() {
   const [step, setStep] = useState(-1);
   const [done, setDone] = useState<Certificate | null>(null);
   const code = form.code || nextCode(certs);
+  const busy = step >= 0 && step < 7;
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [k]: e.target.value });
 
   function validate() {
@@ -55,29 +56,28 @@ function NewCert() {
     ev.preventDefault();
     if (!wallet) { toast.error("Hubungkan wallet terlebih dahulu"); return; }
     if (!validate()) { toast.error("Periksa kembali isian form"); return; }
+    if (busy) return;
     const base = { code, recipientName: form.recipientName.trim(), nim: form.nim, activity: form.activity.trim(), activityDate: form.activityDate, issueDate: form.issueDate };
-    const wait = () => new Promise((r) => setTimeout(r, 300));
     setDone(null);
     try {
-      setStep(0); await wait();
+      setStep(0);
       const hash = await sha256(certPayload(base));
-      setStep(1); await wait(); setStep(2);
-      const r = await sendMemo(wallet, `CertiChain|${code}|${hash}`);
-      const timestamp = new Date().toISOString();
-      setStep(3); await wait(); setStep(4); await wait();
-      setStep(5); await wait(); setStep(6); await wait();
-      const cert: Certificate = { ...base, issuer: ISSUER, fileName: file?.name, status: "valid", hash, txId: r.signature, wallet, timestamp };
+      setStep(1);
+      setStep(2); // waiting for Phantom approval + Devnet confirmation
+      const r = await issueCertificateOnChain({ code, hash, wallet, type: "Penerbitan sertifikat" });
+      setStep(3);
+      setStep(4);
+      setStep(5);
+      const cert: Certificate = { ...base, issuer: ISSUER, fileName: file?.name, status: "valid", hash, txId: r.signature, wallet, timestamp: r.blockTime ?? new Date().toISOString() };
       certStore.add(cert);
-      activityStore.add({ id: r.signature, time: timestamp, type: "Penerbitan sertifikat", description: `${code} · ${base.recipientName}`, wallet, signature: r.signature, fee: r.fee, balanceBefore: r.before, balanceAfter: r.after, status: "success" });
       setStep(7); setDone(cert);
-      toast.success(`Sertifikat ${code} diterbitkan`, { description: `Biaya ${r.fee.toFixed(6)} SOL` });
+      toast.success(`Sertifikat ${code} terkonfirmasi di Devnet`, { description: `Biaya jaringan ${r.fee.toFixed(6)} SOL` });
     } catch (e) {
       setStep(-1);
-      toast.error(e instanceof Error ? e.message : "Transaksi dibatalkan");
+      toast.error(e instanceof Error ? e.message : "Transaksi gagal");
     }
   }
 
-  const busy = step >= 0 && step < 7;
   const fieldErr = (k: string) => errors[k] && <p className="text-xs text-destructive">{errors[k]}</p>;
 
   return (
@@ -97,7 +97,7 @@ function NewCert() {
           </div>
         </form>
         <div className="card-surface p-6">
-          <h2 className="font-semibold">Simulasi pencatatan · Solana Devnet</h2>
+          <h2 className="font-semibold">Pencatatan nyata · Solana Devnet (Memo Program)</h2>
           <ol className="mt-4 space-y-3">
             {STEPS.map((s, i) => {
               const state = step > i ? "done" : step === i ? "active" : "idle";
@@ -116,7 +116,7 @@ function NewCert() {
               <CopyHash label="Hash" value={done.hash} />
               <CopyHash label="Transaction ID" value={done.txId} />
               <CopyHash label="Timestamp" value={done.timestamp} />
-              <Button variant="outline" size="sm" asChild><Link to="/admin/certificates">Lihat di daftar</Link></Button>
+              <div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" asChild><a href={explorerTx(done.txId)} target="_blank" rel="noreferrer">Lihat di Solana Explorer</a></Button><Button variant="outline" size="sm" asChild><Link to="/admin/certificates">Lihat di daftar</Link></Button></div>
             </div>
           )}
         </div>
