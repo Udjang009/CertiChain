@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as VerifyRouteImport } from './routes/verify'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as AdminActivityRouteImport } from './routes/admin.activity'
 import { Route as AdminCertificatesRouteImport } from './routes/admin.certificates'
 import { Route as AdminNewRouteImport } from './routes/admin.new'
 import { Route as StudentIndexRouteImport } from './routes/student.index'
@@ -29,6 +30,11 @@ const VerifyRoute = VerifyRouteImport.update({
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/admin/',
   path: '/admin/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminActivityRoute = AdminActivityRouteImport.update({
+  id: '/admin/activity',
+  path: '/admin/activity',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminCertificatesRoute = AdminCertificatesRouteImport.update({
@@ -50,6 +56,7 @@ const StudentIndexRoute = StudentIndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/verify': typeof VerifyRoute
+  '/admin/activity': typeof AdminActivityRoute
   '/admin/certificates': typeof AdminCertificatesRoute
   '/admin/new': typeof AdminNewRoute
   '/admin/': typeof AdminIndexRoute
@@ -58,6 +65,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/verify': typeof VerifyRoute
+  '/admin/activity': typeof AdminActivityRoute
   '/admin/certificates': typeof AdminCertificatesRoute
   '/admin/new': typeof AdminNewRoute
   '/admin': typeof AdminIndexRoute
@@ -67,6 +75,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/verify': typeof VerifyRoute
+  '/admin/activity': typeof AdminActivityRoute
   '/admin/certificates': typeof AdminCertificatesRoute
   '/admin/new': typeof AdminNewRoute
   '/admin/': typeof AdminIndexRoute
@@ -77,6 +86,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/verify'
+    | '/admin/activity'
     | '/admin/certificates'
     | '/admin/new'
     | '/admin/'
@@ -85,6 +95,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/verify'
+    | '/admin/activity'
     | '/admin/certificates'
     | '/admin/new'
     | '/admin'
@@ -93,6 +104,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/verify'
+    | '/admin/activity'
     | '/admin/certificates'
     | '/admin/new'
     | '/admin/'
@@ -102,6 +114,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   VerifyRoute: typeof VerifyRoute
+  AdminActivityRoute: typeof AdminActivityRoute
   AdminCertificatesRoute: typeof AdminCertificatesRoute
   AdminNewRoute: typeof AdminNewRoute
   AdminIndexRoute: typeof AdminIndexRoute
@@ -131,6 +144,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/activity': {
+      id: '/admin/activity'
+      path: '/admin/activity'
+      fullPath: '/admin/activity'
+      preLoaderRoute: typeof AdminActivityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/certificates': {
       id: '/admin/certificates'
       path: '/admin/certificates'
@@ -158,6 +178,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   VerifyRoute: VerifyRoute,
+  AdminActivityRoute: AdminActivityRoute,
   AdminCertificatesRoute: AdminCertificatesRoute,
   AdminNewRoute: AdminNewRoute,
   AdminIndexRoute: AdminIndexRoute,

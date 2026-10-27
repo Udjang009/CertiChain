@@ -22,7 +22,7 @@ export interface Certificate {
 }
 
 export const ISSUER = "Biro Kemahasiswaan Universitas Demo";
-export const ISSUER_WALLET = "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU";
+export const ISSUER_WALLET = "5FRgsVonKt8rgaFyCi8RcwVP2cEcWyR265HrfdkHDz2Y";
 export const CURRENT_STUDENT_NIM = "2201001";
 
 const B58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
@@ -125,19 +125,42 @@ export function formatDate(d: string) {
   return new Date(d).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
 }
 
-// ---- simulated wallet (no keys ever requested) ----
-const WKEY = "certichain.wallet";
-let wallet: string | null = null;
+// ---- Phantom wallet (Solana Devnet). No keys ever requested; Phantom signs. ----
 const wl = new Set<() => void>();
+let wallet: string | null = null;
+let wired = false;
+function setWallet(w: string | null) { wallet = w; wl.forEach((x) => x()); }
 export const walletStore = {
   subscribe(l: () => void) {
     wl.add(l);
-    queueMicrotask(() => { const w = localStorage.getItem(WKEY); if (w !== wallet) { wallet = w; wl.forEach((x) => x()); } });
+    queueMicrotask(async () => {
+      if (wired) return; wired = true;
+      const { getPhantom } = await import("./solana");
+      const p = getPhantom();
+      if (!p) return;
+      p.on("disconnect", () => setWallet(null));
+      p.on("accountChanged", (pk) => setWallet(pk ? String(pk) : null));
+      try { const r = await p.connect({ onlyIfTrusted: true }); setWallet(r.publicKey.toString()); } catch { /* not trusted yet */ }
+    });
     return () => wl.delete(l);
   },
   get: () => wallet,
-  connect() { wallet = ISSUER_WALLET; localStorage.setItem(WKEY, wallet); wl.forEach((x) => x()); },
-  disconnect() { wallet = null; localStorage.removeItem(WKEY); wl.forEach((x) => x()); },
+  async connect() {
+    const { getPhantom } = await import("./solana");
+    const p = getPhantom();
+    if (!p) {
+      window.open("https://phantom.app/", "_blank", "noopener");
+      throw new Error("Phantom belum terpasang. Buka aplikasi di tab baru dengan ekstensi Phantom aktif.");
+    }
+    const r = await p.connect();
+    setWallet(r.publicKey.toString());
+    return wallet!;
+  },
+  async disconnect() {
+    const { getPhantom } = await import("./solana");
+    await getPhantom()?.disconnect().catch(() => {});
+    setWallet(null);
+  },
 };
 export function useWallet() {
   return useSyncExternalStore(walletStore.subscribe, walletStore.get, () => null);

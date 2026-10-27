@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { DashboardShell } from "@/components/certichain/DashboardShell";
 import { CopyHash } from "@/components/certichain/common";
 import { adminNav } from "@/components/certichain/nav";
-import { certPayload, certStore, ISSUER, ISSUER_WALLET, nextCode, randomBase58, sha256, useCertificates, useWallet, type Certificate } from "@/lib/certs";
+import { certPayload, certStore, ISSUER, nextCode, sha256, useCertificates, useWallet, type Certificate } from "@/lib/certs";
+import { activityStore, sendMemo } from "@/lib/solana";
 
 export const Route = createFileRoute("/admin/new")({
   head: () => ({
@@ -55,19 +56,25 @@ function NewCert() {
     if (!wallet) { toast.error("Hubungkan wallet terlebih dahulu"); return; }
     if (!validate()) { toast.error("Periksa kembali isian form"); return; }
     const base = { code, recipientName: form.recipientName.trim(), nim: form.nim, activity: form.activity.trim(), activityDate: form.activityDate, issueDate: form.issueDate };
-    const wait = () => new Promise((r) => setTimeout(r, 450));
+    const wait = () => new Promise((r) => setTimeout(r, 300));
     setDone(null);
-    setStep(0); await wait();
-    const hash = await sha256(certPayload(base));
-    setStep(1); await wait(); setStep(2); await wait();
-    const timestamp = new Date().toISOString();
-    setStep(3); await wait(); setStep(4); await wait();
-    const txId = randomBase58(88);
-    setStep(5); await wait(); setStep(6); await wait();
-    const cert: Certificate = { ...base, issuer: ISSUER, fileName: file?.name, status: "valid", hash, txId, wallet: ISSUER_WALLET, timestamp };
-    certStore.add(cert);
-    setStep(7); setDone(cert);
-    toast.success(`Sertifikat ${code} diterbitkan`);
+    try {
+      setStep(0); await wait();
+      const hash = await sha256(certPayload(base));
+      setStep(1); await wait(); setStep(2);
+      const r = await sendMemo(wallet, `CertiChain|${code}|${hash}`);
+      const timestamp = new Date().toISOString();
+      setStep(3); await wait(); setStep(4); await wait();
+      setStep(5); await wait(); setStep(6); await wait();
+      const cert: Certificate = { ...base, issuer: ISSUER, fileName: file?.name, status: "valid", hash, txId: r.signature, wallet, timestamp };
+      certStore.add(cert);
+      activityStore.add({ id: r.signature, time: timestamp, type: "Penerbitan sertifikat", description: `${code} · ${base.recipientName}`, wallet, signature: r.signature, fee: r.fee, balanceBefore: r.before, balanceAfter: r.after, status: "success" });
+      setStep(7); setDone(cert);
+      toast.success(`Sertifikat ${code} diterbitkan`, { description: `Biaya ${r.fee.toFixed(6)} SOL` });
+    } catch (e) {
+      setStep(-1);
+      toast.error(e instanceof Error ? e.message : "Transaksi dibatalkan");
+    }
   }
 
   const busy = step >= 0 && step < 7;

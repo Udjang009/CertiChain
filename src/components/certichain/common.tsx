@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { shorten, useWallet, walletStore, type CertStatus } from "@/lib/certs";
+import { EXPECTED_WALLET } from "@/lib/solana";
 
 export function Logo({ light = false }: { light?: boolean }) {
   return (
@@ -37,18 +38,21 @@ export function WalletButton({ variant = "hero" as "hero" | "outline" | "ink" })
   const wallet = useWallet();
   if (wallet)
     return (
-      <Button variant="outline" size="sm" onClick={() => { walletStore.disconnect(); toast("Wallet terputus"); }} className="font-mono">
+      <Button variant="outline" size="sm" onClick={async () => { await walletStore.disconnect(); toast("Wallet terputus"); }} className="font-mono">
         <span className="h-2 w-2 rounded-full bg-success" />
         {shorten(wallet, 4, 4)}
         <LogOut />
       </Button>
     );
   return (
-    <Button variant={variant} size="sm" onClick={() => {
-      walletStore.connect();
-      toast.success("Wallet dummy terhubung (Solana Devnet)", { description: "Tidak ada private key atau seed phrase yang diminta." });
+    <Button variant={variant} size="sm" onClick={async () => {
+      try {
+        const w = await walletStore.connect();
+        if (w !== EXPECTED_WALLET) toast.warning("Wallet terhubung, tetapi bukan wallet penerbit yang terdaftar", { description: w });
+        else toast.success("Phantom terhubung (Solana Devnet)", { description: shorten(w, 6, 6) });
+      } catch (e) { toast.error(e instanceof Error ? e.message : "Gagal menghubungkan wallet"); }
     }}>
-      <Wallet /> Connect Wallet
+      <Wallet /> Connect Phantom
     </Button>
   );
 }

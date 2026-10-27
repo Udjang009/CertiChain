@@ -9,7 +9,8 @@ import { DashboardShell } from "@/components/certichain/DashboardShell";
 import { EmptyState, StatusBadge } from "@/components/certichain/common";
 import { CertDetailDialog } from "@/components/certichain/CertDetailDialog";
 import { adminNav } from "@/components/certichain/nav";
-import { certPayload, certStore, formatDate, ISSUER_WALLET, randomBase58, sha256, shorten, useCertificates, type Certificate } from "@/lib/certs";
+import { certPayload, certStore, formatDate, sha256, shorten, useCertificates, walletStore, type Certificate } from "@/lib/certs";
+import { activityStore, sendMemo } from "@/lib/solana";
 
 export const Route = createFileRoute("/admin/certificates")({
   head: () => ({
@@ -33,9 +34,16 @@ function CertList() {
     [c.code, c.recipientName, c.activity].some((v) => v.toLowerCase().includes(q.toLowerCase())));
 
   async function record(c: Certificate) {
-    const hash = await sha256(certPayload(c));
-    certStore.update(c.code, { hash, txId: randomBase58(88), wallet: ISSUER_WALLET, timestamp: new Date().toISOString(), status: "valid" });
-    toast.success(`${c.code} dicatat ke blockchain`);
+    const wallet = walletStore.get();
+    if (!wallet) { toast.error("Hubungkan Phantom terlebih dahulu"); return; }
+    try {
+      const hash = await sha256(certPayload(c));
+      const r = await sendMemo(wallet, `CertiChain|${c.code}|${hash}`);
+      const timestamp = new Date().toISOString();
+      certStore.update(c.code, { hash, txId: r.signature, wallet, timestamp, status: "valid" });
+      activityStore.add({ id: r.signature, time: timestamp, type: "Pencatatan sertifikat", description: `${c.code} · ${c.recipientName}`, wallet, signature: r.signature, fee: r.fee, balanceBefore: r.before, balanceAfter: r.after, status: "success" });
+      toast.success(`${c.code} dicatat ke blockchain`, { description: `Biaya ${r.fee.toFixed(6)} SOL` });
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Transaksi gagal"); }
   }
 
   return (
