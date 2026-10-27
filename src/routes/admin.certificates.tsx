@@ -10,7 +10,8 @@ import { EmptyState, StatusBadge } from "@/components/certichain/common";
 import { CertDetailDialog } from "@/components/certichain/CertDetailDialog";
 import { adminNav } from "@/components/certichain/nav";
 import { certPayload, certStore, formatDate, sha256, shorten, useCertificates, walletStore, type Certificate } from "@/lib/certs";
-import { activityStore, sendMemo } from "@/lib/solana";
+import { Loader2 } from "lucide-react";
+import { issueCertificateOnChain } from "@/lib/solana";
 
 export const Route = createFileRoute("/admin/certificates")({
   head: () => ({
@@ -29,6 +30,7 @@ function CertList() {
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("all");
   const [sel, setSel] = useState<Certificate | null>(null);
+  const [busyCode, setBusyCode] = useState<string | null>(null);
   const rows = certs.filter((c) =>
     (status === "all" || c.status === status) &&
     [c.code, c.recipientName, c.activity].some((v) => v.toLowerCase().includes(q.toLowerCase())));
@@ -36,14 +38,15 @@ function CertList() {
   async function record(c: Certificate) {
     const wallet = walletStore.get();
     if (!wallet) { toast.error("Hubungkan Phantom terlebih dahulu"); return; }
+    if (busyCode) return;
+    setBusyCode(c.code);
     try {
       const hash = await sha256(certPayload(c));
-      const r = await sendMemo(wallet, `CertiChain|${c.code}|${hash}`);
-      const timestamp = new Date().toISOString();
-      certStore.update(c.code, { hash, txId: r.signature, wallet, timestamp, status: "valid" });
-      activityStore.add({ id: r.signature, time: timestamp, type: "Pencatatan sertifikat", description: `${c.code} · ${c.recipientName}`, wallet, signature: r.signature, fee: r.fee, balanceBefore: r.before, balanceAfter: r.after, status: "success" });
-      toast.success(`${c.code} dicatat ke blockchain`, { description: `Biaya ${r.fee.toFixed(6)} SOL` });
+      const r = await issueCertificateOnChain({ code: c.code, hash, wallet, type: "Pencatatan sertifikat" });
+      certStore.update(c.code, { hash, txId: r.signature, wallet, timestamp: r.blockTime ?? new Date().toISOString(), status: "valid" });
+      toast.success(`${c.code} terkonfirmasi di Devnet`, { description: `Biaya jaringan ${r.fee.toFixed(6)} SOL` });
     } catch (e) { toast.error(e instanceof Error ? e.message : "Transaksi gagal"); }
+    finally { setBusyCode(null); }
   }
 
   return (
@@ -83,7 +86,7 @@ function CertList() {
                   <td className="px-4 py-3">
                     <div className="flex gap-1">
                       <Button size="sm" variant="ghost" onClick={() => setSel(c)}><Eye /> Detail</Button>
-                      {c.status === "pending" && <Button size="sm" variant="outline" onClick={() => record(c)}><ShieldCheck /> Catat</Button>}
+                      {c.status === "pending" && <Button size="sm" variant="outline" disabled={!!busyCode} onClick={() => record(c)}>{busyCode === c.code ? <Loader2 className="animate-spin" /> : <ShieldCheck />} Catat</Button>}
                     </div>
                   </td>
                 </tr>
