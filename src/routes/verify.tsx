@@ -19,7 +19,7 @@ export const Route = createFileRoute("/verify")({
   component: VerifyPage,
 });
 
-type Result = { ok: true; cert: Certificate } | { ok: false; code: string } | null;
+type Result = { ok: true; cert: Certificate; blockTime: string | null } | { ok: false; code: string; reason: string; cert?: Certificate } | null;
 
 function VerifyPage() {
   const [code, setCode] = useState("");
@@ -31,12 +31,17 @@ function VerifyPage() {
     const c = raw.trim().toUpperCase();
     if (!/^CC-\d{4}-\d{4}$/.test(c)) { setErr("Format kode: CC-YYYY-NNNN"); return; }
     setErr(""); setLoading(true); setResult(null);
-    await new Promise((r) => setTimeout(r, 900));
-    const cert = certStore.get().find((x) => x.code === c);
-    let ok = false;
-    if (cert && cert.status === "valid") ok = (await sha256(certPayload(cert))) === cert.hash || cert.hash.length === 64;
-    setResult(ok && cert ? { ok: true, cert } : { ok: false, code: c });
-    setLoading(false);
+    try {
+      const cert = certStore.get().find((x) => x.code === c);
+      if (!cert) { setResult({ ok: false, code: c, reason: "Kode sertifikat tidak ditemukan di data aplikasi pada perangkat ini." }); return; }
+      if (!cert.txId || !cert.hash) { setResult({ ok: false, code: c, reason: "Sertifikat belum dicatat ke blockchain.", cert }); return; }
+      const hash = await sha256(certPayload(cert));
+      if (hash !== cert.hash) { setResult({ ok: false, code: c, reason: "Data sertifikat telah berubah — hash tidak cocok.", cert }); return; }
+      const chk = await verifyOnChain(cert.txId, issueMemo(cert.code, hash), cert.wallet);
+      setResult(chk.ok ? { ok: true, cert, blockTime: chk.blockTime } : { ok: false, code: c, reason: chk.reason, cert });
+    } catch {
+      setResult({ ok: false, code: c, reason: "Gagal menghubungi Solana Devnet. Coba lagi." });
+    } finally { setLoading(false); }
   }
 
   return (
